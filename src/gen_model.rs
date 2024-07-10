@@ -229,19 +229,6 @@ impl <'a> Iterator for BigramIterator<'a> {
 fn bigrams<'a>(sequence : &'a [u8]) -> BigramIterator<'a> {
     BigramIterator::new(sequence.iter())
 }
-//    let mut iter = sequence.iter();
-//    let mut last = *iter.next().unwrap();
-//    let mut result = Vec::new();
-//    for item in iter {
-//        result.push((last, *item));
-//        last = *item;
-//    }
-//    result
-//}
-
-//fn format_int_line<U : std::fmt::Display>(items : &[U]) -> String {
-//    items.iter().map(|k| format!("{}", k)).collect::<Vec<String>>().join(", ")
-//}
 
 fn u32_line(items: &[u32]) ->  [u32; MAX_CONSECUTIVES] {
     let mut result = [0; 8];
@@ -312,18 +299,21 @@ fn chunkinator<P : AsRef<Path>>(files : &[P], split : Split, strip : Strip) -> V
     result
 }
 
+/// The characters to strip from the input
 pub enum Strip {
     Whitespace,
     Punctuation,
     None,
 }
 
+/// The splitting strategy to use
 pub enum Split {
     Newline,
     Whitespace,
     None,
 }
 
+/// A builder for generating a Shoco model from a text corpus
 pub struct GenShocoModel<P : AsRef<Path>> {
     files : Vec<P>,
     split : Split,
@@ -374,6 +364,22 @@ fn most_common(freqs : &[usize], n : usize) -> Vec<(u8, usize)> {
 }
 
 impl<P: AsRef<Path>> GenShocoModel<P> {
+    /// Create a new Shoco model builder
+    ///
+    /// # Arguments
+    ///
+    /// * `files` - A list of paths to text files to use as a corpus
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use shoco::{GenShocoModel, Split};
+    /// let model = GenShocoModel::new(vec!["training_data/dorian_gray.txt",
+    ///              "training_data/metamorphosis.txt",
+    ///              "training_data/pride_and_prejudice.txt"])
+    ///     .split(Split::Newline)
+    ///     .generate();
+    /// ```
     pub fn new(files : Vec<P>) -> GenShocoModel<P> {
         GenShocoModel {
             files,
@@ -387,6 +393,7 @@ impl<P: AsRef<Path>> GenShocoModel<P> {
         }
     }
 
+    /// Define the splitting strategy (newlines, whitespace or none)
     pub fn split(self, split : Split) -> GenShocoModel<P> {
         GenShocoModel {
             split,
@@ -394,6 +401,7 @@ impl<P: AsRef<Path>> GenShocoModel<P> {
         }
     }
 
+    /// Define which characters to strip from the beginning of each chunk
     pub fn strip(self, strip : Strip) -> GenShocoModel<P> {
         GenShocoModel {
             strip,
@@ -401,6 +409,7 @@ impl<P: AsRef<Path>> GenShocoModel<P> {
         }
     }
 
+    /// The maximum number of bits to use for the leading character
     pub fn max_leading_char_bits(self, max_leading_char_bits : u32) -> GenShocoModel<P> {
         GenShocoModel {
             max_leading_char_bits,
@@ -408,6 +417,7 @@ impl<P: AsRef<Path>> GenShocoModel<P> {
         }
     }
 
+    /// The maximum number of bits to use for each successor character
     pub fn max_successor_bits(self, max_successor_bits : u32) -> GenShocoModel<P> {
         GenShocoModel {
             max_successor_bits,
@@ -415,7 +425,7 @@ impl<P: AsRef<Path>> GenShocoModel<P> {
         }
     }
 
-
+    /// The number of encoding types to generate
     pub fn encoding_types(self, encoding_types : usize) -> GenShocoModel<P> {
         GenShocoModel {
             encoding_types,
@@ -423,6 +433,7 @@ impl<P: AsRef<Path>> GenShocoModel<P> {
         }
     }
 
+    /// Whether to optimize the encoding types
     pub fn optimize_encoding(self, optimize_encoding : bool) -> GenShocoModel<P> {
         GenShocoModel {
             optimize_encoding,
@@ -430,6 +441,8 @@ impl<P: AsRef<Path>> GenShocoModel<P> {
         }
     }
 
+    /// Ensure full compatibility with original Python implementation
+    /// at the cost of performance
     pub fn compatibility(self, compatibility : bool) -> GenShocoModel<P> {
         GenShocoModel {
             compatibility,
@@ -437,6 +450,10 @@ impl<P: AsRef<Path>> GenShocoModel<P> {
         }
     }
 
+    /// Generate the model with the parameters in this builder
+    ///
+    /// # Returns
+    /// A Shoco model or an IO error if a file could not be read
     pub fn generate(self) -> Result<ShocoModel, std::io::Error> {
         let chars_count = 1 << self.max_leading_char_bits;
         //let successors_count = 1 << self.max_successor_bits;
@@ -742,5 +759,26 @@ mod test {
             Pack { word: 0xc0000000, bytes_packed: 2, bytes_unpacked: 4, offsets: [25, 22, 19, 16, 16, 16, 16, 16], masks: [15, 7, 7, 7, 0, 0, 0, 0], header_mask: 0xe0, header: 0xc0 },
             Pack { word: 0xe0000000, bytes_packed: 4, bytes_unpacked: 8, offsets: [23, 19, 15, 11, 8, 5, 2, 0], masks: [31, 15, 15, 15, 7, 7, 7, 3], header_mask: 0xf0, header: 0xe0 }
         ]);
+    }
+
+    #[test]
+    fn test_size() {
+        let model = ShocoModel::default();
+        let dorian_grey = include_str!("../training_data/dorian_gray.txt");
+        let metamorphosis = include_str!("../training_data/metamorphosis.txt");
+        let pride_and_prejudice = include_str!("../training_data/pride_and_prejudice.txt");
+        eprintln!("## DEFAULT MODEL");
+        eprintln!("dorian_grey: {}", crate::shoco_compress(dorian_grey, &model).len());
+        eprintln!("metamorphosis: {}", crate::shoco_compress(metamorphosis, &model).len());
+        eprintln!("pride_and_prejudice: {}", crate::shoco_compress(pride_and_prejudice, &model).len());
+        eprintln!("\n## CUSTOM MODEL");
+        let model = GenShocoModel::new(vec![
+            "training_data/dorian_gray.txt",
+            "training_data/metamorphosis.txt"])
+            .compatibility(true)
+            .generate().unwrap();
+        eprintln!("dorian_grey: {}", crate::shoco_compress(dorian_grey, &model).len());
+        eprintln!("metamorphosis: {}", crate::shoco_compress(metamorphosis, &model).len());
+        eprintln!("pride_and_prejudice: {}", crate::shoco_compress(pride_and_prejudice, &model).len());
     }
 }

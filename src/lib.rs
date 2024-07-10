@@ -1,8 +1,29 @@
+//! # Shoco
+//!
+//! This is a Rust implementation of the Shoco compression algorithm.
+//! Shoco is a simple and fast compressor for short strings.
+//! 
+//! This version is based on the original C code by [Ed-von-Schleck](https://github.com/Ed-von-Schleck/shoco).
+//!
+//! It is intended to be used in embedded systems rather than as a stand-alone command.
+//! As such you can train your own model using the `gen_model` function.
+//!
+//! ## Example
+//!
+//! ```rust
+//! use shoco::{shoco_compress, shoco_decompress, ShocoModel};
+//! let model = ShocoModel::default();
+//! let original = "This is a very simple test";
+//! let compressed = shoco_compress(original, &model);
+//! let decompressed = shoco_decompress(&compressed, &model).unwrap();
+//! assert_eq!(original, decompressed);
+//! ```
+
 mod model;
 mod gen_model;
 
-use model::ShocoModel;
-use gen_model::GenShocoModel;
+pub use model::ShocoModel;
+pub use gen_model::{GenShocoModel, Split, Strip};
 use std::path::Path;
 
 
@@ -42,6 +63,14 @@ fn find_best_encoding(indices: &[i8], n_consecutive: usize, model : &ShocoModel)
     -1
 }
 
+/// Compress a string using a Shoco model
+///
+/// # Arguments
+/// * `original` - The string to compress
+/// * `model` - The model to use for compression
+///
+/// # Returns
+/// A vector of bytes representing the compressed string
 pub fn shoco_compress(original: &str, model : &ShocoModel) -> Vec<u8> {
     let mut out = Vec::new();
     let bytes = original.as_bytes();
@@ -118,6 +147,14 @@ fn last_resort(o : &[u8], in_idx : &mut usize, out : &mut Vec<u8>) {
     *in_idx += 1;
 }
 
+/// Decompress a vector of bytes using a Shoco model
+///
+/// # Arguments
+/// * `original` - The vector of bytes to decompress
+/// * `model` - The model to use for decompression
+///
+/// # Returns
+/// A Result containing the decompressed string or an error if the decompression fails
 pub fn shoco_decompress(original : &[u8], model : &ShocoModel) -> Result<String, std::string::FromUtf8Error> {
     let mut out : Vec<u8> = Vec::new();
     let mut in_idx = 0usize;
@@ -161,6 +198,19 @@ pub fn shoco_decompress(original : &[u8], model : &ShocoModel) -> Result<String,
     return String::from_utf8(out);
 }
 
+/// Generate a new model from a list of files
+///
+/// # Arguments
+/// * `files` - A vector of paths to files to use for training the model
+///
+/// # Returns
+/// A builder for generating a new model
+///
+/// # Example
+/// ```rust
+/// use shoco::gen_model;
+/// let model = gen_model(vec!["training_data/pride_and_prejudice.txt"]).generate();
+/// ```
 pub fn gen_model<P: AsRef<Path>>(files : Vec<P>) -> GenShocoModel<P> {
     GenShocoModel::new(files)
 }
