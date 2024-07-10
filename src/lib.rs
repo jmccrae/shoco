@@ -1,6 +1,10 @@
 mod model;
+mod gen_model;
 
 use model::ShocoModel;
+use gen_model::GenShocoModel;
+use std::path::Path;
+
 
 fn decode_header(val: u8) -> i32 {
     let mut i = -1;
@@ -155,6 +159,10 @@ pub fn shoco_decompress(original : &[u8], model : &ShocoModel) -> Result<String,
         }
     }
     return String::from_utf8(out);
+}
+
+pub fn gen_model<P: AsRef<Path>>(files : Vec<P>) -> GenShocoModel<P> {
+    GenShocoModel::new(files)
 }
 
 #[cfg(test)]
