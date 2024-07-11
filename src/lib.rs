@@ -22,7 +22,7 @@
 mod model;
 mod gen_model;
 
-pub use model::ShocoModel;
+pub use model::{ShocoModel, Pack};
 pub use gen_model::{GenShocoModel, Split, Strip};
 use std::path::Path;
 

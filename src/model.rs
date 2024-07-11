@@ -1,3 +1,4 @@
+/// A model used for Shoco compression
 #[derive(Debug)]
 pub struct ShocoModel {
     pub min_chr : u8,
@@ -174,6 +175,7 @@ impl ShocoModel {
 
 pub const MAX_CONSECUTIVES : usize = 8;
 
+/// A pack is a structure that contains the information needed to pack and unpack a word.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Pack {
     pub word : u32,

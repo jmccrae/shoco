@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-ordermap = "0.5.0"
+ordermap = "*"
 
 # [[bin]]
 # name = "gen_model"
