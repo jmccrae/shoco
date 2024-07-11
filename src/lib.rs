@@ -211,8 +211,8 @@ pub fn shoco_decompress(original : &[u8], model : &ShocoModel) -> Result<String,
 /// use shoco::gen_model;
 /// let model = gen_model(vec!["training_data/pride_and_prejudice.txt"]).generate();
 /// ```
-pub fn gen_model<P: AsRef<Path>>(files : Vec<P>) -> GenShocoModel<P> {
-    GenShocoModel::new(files)
+pub fn gen_model<P: AsRef<Path>>(files : Vec<P>) -> GenShocoModel {
+    GenShocoModel::from_files(files)
 }
 
 #[cfg(test)]
