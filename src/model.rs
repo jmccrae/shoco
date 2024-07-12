@@ -1,5 +1,5 @@
 /// A model used for Shoco compression
-#[derive(Debug)]
+#[derive(Debug,Clone,Eq,PartialEq)]
 pub struct ShocoModel {
     pub min_chr : u8,
     pub max_chr : u8,
