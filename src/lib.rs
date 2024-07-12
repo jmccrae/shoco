@@ -11,11 +11,11 @@
 //! ## Example
 //!
 //! ```rust
-//! use shoco::{shoco_compress, shoco_decompress, ShocoModel};
+//! use shoco::{compress, decompress, ShocoModel};
 //! let model = ShocoModel::default();
 //! let original = "This is a very simple test";
-//! let compressed = shoco_compress(original, &model);
-//! let decompressed = shoco_decompress(&compressed, &model).unwrap();
+//! let compressed = compress(original, &model);
+//! let decompressed = decompress(&compressed, &model).unwrap();
 //! assert_eq!(original, decompressed);
 //! ```
 
@@ -71,7 +71,7 @@ fn find_best_encoding(indices: &[i8], n_consecutive: usize, model : &ShocoModel)
 ///
 /// # Returns
 /// A vector of bytes representing the compressed string
-pub fn shoco_compress(original: &str, model : &ShocoModel) -> Vec<u8> {
+pub fn compress(original: &str, model : &ShocoModel) -> Vec<u8> {
     let mut out = Vec::new();
     let bytes = original.as_bytes();
     let mut in_idx = 0usize; // Now an index
@@ -155,7 +155,7 @@ fn last_resort(o : &[u8], in_idx : &mut usize, out : &mut Vec<u8>) {
 ///
 /// # Returns
 /// A Result containing the decompressed string or an error if the decompression fails
-pub fn shoco_decompress(original : &[u8], model : &ShocoModel) -> Result<String, std::string::FromUtf8Error> {
+pub fn decompress(original : &[u8], model : &ShocoModel) -> Result<String, std::string::FromUtf8Error> {
     let mut out : Vec<u8> = Vec::new();
     let mut in_idx = 0usize;
 
@@ -220,19 +220,19 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_shoco_compress() {
+    fn test_compress() {
         let original = "This is a very simple test";
         let model = ShocoModel::default();
-        let compressed = shoco_compress(original, &model);
+        let compressed = compress(original, &model);
         assert_eq!(compressed, 
             vec![0x54, 0x96, 0x73, 0x20, 0x89, 0x20, 0x61, 0x20, 0x76, 0x80, 0x79, 0x20, 0xd0, 0xdd, 0xa4, 0x20, 0xc8, 0x99 ]);
     }
 
     #[test]
-    fn test_shoco_decompress() {
+    fn test_decompress() {
         let compressed = vec![0x54, 0x96, 0x73, 0x20, 0x89, 0x20, 0x61, 0x20, 0x76, 0x80, 0x79, 0x20, 0xd0, 0xdd, 0xa4, 0x20, 0xc8, 0x99 ];
         let model = ShocoModel::default();
-        let decompressed = shoco_decompress(&compressed, &model).unwrap();
+        let decompressed = decompress(&compressed, &model).unwrap();
         assert_eq!(decompressed, "This is a very simple test");
     }
 }

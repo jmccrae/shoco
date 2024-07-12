@@ -800,17 +800,17 @@ mod test {
         let metamorphosis = include_str!("../training_data/metamorphosis.txt");
         let pride_and_prejudice = include_str!("../training_data/pride_and_prejudice.txt");
         eprintln!("## DEFAULT MODEL");
-        eprintln!("dorian_grey: {}", crate::shoco_compress(dorian_grey, &model).len());
-        eprintln!("metamorphosis: {}", crate::shoco_compress(metamorphosis, &model).len());
-        eprintln!("pride_and_prejudice: {}", crate::shoco_compress(pride_and_prejudice, &model).len());
+        eprintln!("dorian_grey: {}", crate::compress(dorian_grey, &model).len());
+        eprintln!("metamorphosis: {}", crate::compress(metamorphosis, &model).len());
+        eprintln!("pride_and_prejudice: {}", crate::compress(pride_and_prejudice, &model).len());
         eprintln!("\n## CUSTOM MODEL");
         let model = GenShocoModel::from_files(vec![
             "training_data/dorian_gray.txt",
             "training_data/metamorphosis.txt"])
             .compatibility(true)
             .generate().unwrap();
-        eprintln!("dorian_grey: {}", crate::shoco_compress(dorian_grey, &model).len());
-        eprintln!("metamorphosis: {}", crate::shoco_compress(metamorphosis, &model).len());
-        eprintln!("pride_and_prejudice: {}", crate::shoco_compress(pride_and_prejudice, &model).len());
+        eprintln!("dorian_grey: {}", crate::compress(dorian_grey, &model).len());
+        eprintln!("metamorphosis: {}", crate::compress(metamorphosis, &model).len());
+        eprintln!("pride_and_prejudice: {}", crate::compress(pride_and_prejudice, &model).len());
     }
 }
