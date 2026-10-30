@@ -11,7 +11,7 @@
 //! ## Example
 //!
 //! ```rust
-//! use shoco::{compress, decompress, ShocoModel};
+//! use shoco_dyn::{compress, decompress, ShocoModel};
 //! let model = ShocoModel::default();
 //! let original = "This is a very simple test";
 //! let compressed = compress(original, &model);
@@ -72,17 +72,15 @@ impl Code {
 }
 
 fn check_indices(indices: &[i8], pack_n: usize, model : &ShocoModel) -> bool {
-    for i in 0..model.packs[pack_n].bytes_unpacked {
-        if indices[i as usize] as i16 > model.packs[pack_n].masks[i as usize] {
-            return false;
-        }
-    }
-    true
+    let pack = &model.packs[pack_n];
+    indices.iter().zip(pack.masks.iter())
+        .take(pack.bytes_unpacked)
+        .all(|(&index, &mask)| index as i16 <= mask)
 }
 
 fn find_best_encoding(indices: &[i8], n_consecutive: usize, model : &ShocoModel) -> i32 {
     for p in (0..model.packs.len()).rev() {
-        if n_consecutive >= model.packs[p].bytes_unpacked as usize && check_indices(indices, p as usize, model) {
+        if n_consecutive >= model.packs[p].bytes_unpacked && check_indices(indices, p, model) {
             return p as i32;
         }
     }
@@ -119,7 +117,7 @@ pub fn compress(original: &str, model : &ShocoModel) -> Vec<u8> {
                 break;
             }
 
-            let current_index = model.chr_ids_by_chr[bytes[(in_idx + n_consecutive) as usize] as usize];
+            let current_index = model.chr_ids_by_chr[bytes[in_idx + n_consecutive] as usize];
             if current_index < 0 {
                 break;
             }
@@ -129,7 +127,7 @@ pub fn compress(original: &str, model : &ShocoModel) -> Vec<u8> {
                 break;
             }
 
-            indices[n_consecutive as usize] = successor_index;
+            indices[n_consecutive] = successor_index;
             last_chr_index = current_index;
 
             n_consecutive += 1;
@@ -145,23 +143,21 @@ pub fn compress(original: &str, model : &ShocoModel) -> Vec<u8> {
             //    return out;
             //}
 
-            let mut code = Code(model.packs[pack_n as usize].word);
-            for i in 0..model.packs[pack_n as usize].bytes_unpacked {
-                code.0 |= (indices[i as usize] as u32) << model.packs[pack_n as usize].offsets[i as usize];
+            let pack = &model.packs[pack_n as usize];
+            let mut code = Code(pack.word);
+            for (&index, &offset) in indices.iter().zip(pack.offsets.iter()).take(pack.bytes_unpacked) {
+                code.0 |= (index as u32) << offset;
             }
 
-            let code_bytes = code.bytes();
-            for i in 0..model.packs[pack_n as usize].bytes_packed {
-                out.push(code_bytes[i as usize]);
-            }
+            out.extend_from_slice(&code.bytes()[..pack.bytes_packed]);
 
-            in_idx += model.packs[pack_n as usize].bytes_unpacked;
+            in_idx += pack.bytes_unpacked;
         } else {
             last_resort(bytes, &mut in_idx, &mut out);
             continue;
         }
     }
-    return out;
+    out
 }
 
 fn last_resort(o : &[u8], in_idx : &mut usize, out : &mut Vec<u8>) {
@@ -240,7 +236,7 @@ pub fn decompress(original : &[u8], model : &ShocoModel) -> Result<String, Decom
 ///
 /// # Example
 /// ```rust
-/// use shoco::gen_model;
+/// use shoco_dyn::gen_model;
 /// let model = gen_model(vec!["training_data/pride_and_prejudice.txt"]).generate();
 /// ```
 pub fn gen_model<P: AsRef<Path>>(files : Vec<P>) -> GenShocoModel {

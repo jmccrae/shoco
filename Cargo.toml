@@ -1,12 +1,18 @@
 [package]
-name = "shoco"
-version = "0.1.0"
+name = "shoco-dyn"
+version = "0.2.0"
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+description = "Shoco compression for short strings, with models trained on your own text"
+license = "MIT"
+repository = "https://github.com/jmccrae/shoco"
+readme = "README.md"
+keywords = ["compression", "shoco", "short-strings", "text"]
+categories = ["compression", "text-processing"]
+# The training data is only used by the tests
+exclude = ["training_data/", ".github/"]
 
 [dependencies]
-ordermap = "*"
+ordermap = "1.2"
 
 # [[bin]]
 # name = "gen_model"
