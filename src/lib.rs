@@ -27,6 +27,32 @@ pub use gen_model::{GenShocoModel, Split, Strip};
 use std::path::Path;
 
 
+/// Errors that can occur when decompressing
+#[derive(Debug)]
+pub enum DecompressError {
+    /// The input is not valid compressed data for this model
+    Malformed,
+    /// The decompressed bytes are not valid UTF-8
+    Utf8(std::string::FromUtf8Error),
+}
+
+impl std::fmt::Display for DecompressError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            DecompressError::Malformed => write!(f, "malformed compressed data"),
+            DecompressError::Utf8(e) => write!(f, "invalid UTF-8: {}", e),
+        }
+    }
+}
+
+impl std::error::Error for DecompressError {}
+
+impl From<std::string::FromUtf8Error> for DecompressError {
+    fn from(e: std::string::FromUtf8Error) -> Self {
+        DecompressError::Utf8(e)
+    }
+}
+
 fn decode_header(val: u8) -> i32 {
     let mut i = -1;
     let mut val = val as i8;
@@ -72,13 +98,13 @@ fn find_best_encoding(indices: &[i8], n_consecutive: usize, model : &ShocoModel)
 /// # Returns
 /// A vector of bytes representing the compressed string
 pub fn compress(original: &str, model : &ShocoModel) -> Vec<u8> {
-    let mut out = Vec::new();
+    let mut out = Vec::with_capacity(original.len());
     let bytes = original.as_bytes();
     let mut in_idx = 0usize; // Now an index
+    // Only the first n_consecutive entries are read, so this can be reused
+    let mut indices = vec![0; model.max_successor_n + 1];
 
     while in_idx < original.len() {
-
-        let mut indices = vec![0; model.max_successor_n + 1];
         indices[0] = model.chr_ids_by_chr[bytes[in_idx] as usize];
         let mut last_chr_index = indices[0];
         if last_chr_index < 0 {
@@ -139,10 +165,11 @@ pub fn compress(original: &str, model : &ShocoModel) -> Vec<u8> {
 }
 
 fn last_resort(o : &[u8], in_idx : &mut usize, out : &mut Vec<u8>) {
-    if (o[*in_idx] & 0x80) != 0 {
-        // Non-ASCII insert sentinel value
+    if (o[*in_idx] & 0x80) != 0 || o[*in_idx] == 0x00 {
+        // Non-ASCII or NUL: insert sentinel value. The C implementation stops
+        // at NUL instead, but its decompressor reads an escaped NUL correctly
         out.push(0x00);
-    } 
+    }
     out.push(o[*in_idx]);
     *in_idx += 1;
 }
@@ -155,47 +182,52 @@ fn last_resort(o : &[u8], in_idx : &mut usize, out : &mut Vec<u8>) {
 ///
 /// # Returns
 /// A Result containing the decompressed string or an error if the decompression fails
-pub fn decompress(original : &[u8], model : &ShocoModel) -> Result<String, std::string::FromUtf8Error> {
-    let mut out : Vec<u8> = Vec::new();
+pub fn decompress(original : &[u8], model : &ShocoModel) -> Result<String, DecompressError> {
+    let mut out : Vec<u8> = Vec::with_capacity(original.len() * 2);
     let mut in_idx = 0usize;
 
     while in_idx < original.len() {
         let mark = decode_header(original[in_idx]);
         if mark < 0 {
+            // 0x00 escapes the next byte (non-ASCII or NUL)
             if original[in_idx] == 0x00 {
                 in_idx += 1;
+                if in_idx >= original.len() {
+                    return Err(DecompressError::Malformed);
+                }
             }
             out.push(original[in_idx]);
             in_idx += 1;
         } else {
-            let mark = mark as usize;
-            if in_idx + model.packs[mark].bytes_packed > original.len() {
-                return String::from_utf8(out);
+            let pack = model.packs.get(mark as usize).ok_or(DecompressError::Malformed)?;
+            if in_idx + pack.bytes_packed > original.len() {
+                return Err(DecompressError::Malformed);
             }
 
             let mut code_bytes = [0u8; 4];
-            for i in 0..model.packs[mark].bytes_packed {
-                code_bytes[i as usize] = original[in_idx + i as usize];
-            }
-            
+            code_bytes[..pack.bytes_packed].copy_from_slice(&original[in_idx..in_idx + pack.bytes_packed]);
             let code = u32::from_be_bytes(code_bytes);
 
-            let mut offset = model.packs[mark].offsets[0];
-            let mut mask = model.packs[mark].masks[0];
-            let mut last_chr = model.chrs_by_chr_id[((code >> offset) & (mask as u32)) as usize];
+            let chr_id = ((code >> pack.offsets[0]) & (pack.masks[0] as u32)) as usize;
+            let mut last_chr = *model.chrs_by_chr_id.get(chr_id).ok_or(DecompressError::Malformed)?;
             out.push(last_chr);
 
-            for i in 1..model.packs[mark as usize].bytes_unpacked {
-                offset = model.packs[mark as usize].offsets[i as usize];
-                mask = model.packs[mark as usize].masks[i as usize];
-                last_chr = model.chrs_by_chr_and_successor_id[(last_chr - model.min_chr) as usize][(code >> offset) as usize & mask as usize];
+            for i in 1..pack.bytes_unpacked {
+                let successor_id = (code >> pack.offsets[i]) as usize & pack.masks[i] as usize;
+                // A character below min_chr wraps around and fails the lookup
+                last_chr = model.chrs_by_chr_and_successor_id
+                    .get(last_chr.wrapping_sub(model.min_chr) as usize)
+                    .and_then(|successors| successors.get(successor_id))
+                    .copied()
+                    .filter(|&c| c != 0)
+                    .ok_or(DecompressError::Malformed)?;
                 out.push(last_chr);
             }
 
-            in_idx += model.packs[mark as usize].bytes_packed;
+            in_idx += pack.bytes_packed;
         }
     }
-    return String::from_utf8(out);
+    Ok(String::from_utf8(out)?)
 }
 
 /// Generate a new model from a list of files
