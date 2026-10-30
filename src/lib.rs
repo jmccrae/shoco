@@ -11,7 +11,7 @@
 //! ## Example
 //!
 //! ```rust
-//! use shoco::{compress, decompress, ShocoModel};
+//! use shoco_dyn::{compress, decompress, ShocoModel};
 //! let model = ShocoModel::default();
 //! let original = "This is a very simple test";
 //! let compressed = compress(original, &model);
@@ -240,7 +240,7 @@ pub fn decompress(original : &[u8], model : &ShocoModel) -> Result<String, Decom
 ///
 /// # Example
 /// ```rust
-/// use shoco::gen_model;
+/// use shoco_dyn::gen_model;
 /// let model = gen_model(vec!["training_data/pride_and_prejudice.txt"]).generate();
 /// ```
 pub fn gen_model<P: AsRef<Path>>(files : Vec<P>) -> GenShocoModel {

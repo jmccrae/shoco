@@ -372,7 +372,7 @@ impl GenShocoModel {
     /// # Example
     ///
     /// ```
-    /// use shoco::{GenShocoModel, Split};
+    /// use shoco_dyn::{GenShocoModel, Split};
     /// let model = GenShocoModel::from_iter(Box::new(vec![b"Hello, world!".to_vec(), b"Goodbye, world!".to_vec()].into_iter()))
     ///    .split(Split::Whitespace)
     ///    .generate();
@@ -399,7 +399,7 @@ impl GenShocoModel {
     /// # Example
     ///
     /// ```
-    /// use shoco::{GenShocoModel, Split};
+    /// use shoco_dyn::{GenShocoModel, Split};
     /// let model = GenShocoModel::from_files(vec!["training_data/dorian_gray.txt",
     ///              "training_data/metamorphosis.txt",
     ///              "training_data/pride_and_prejudice.txt"])

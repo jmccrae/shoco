@@ -147,9 +147,9 @@ impl ShocoModel {
         }
     }
 
-    /// The default model of versions of this crate before 0.2, which
-    /// differs slightly from the C implementation's model. Use it to read
-    /// data compressed with the earlier default.
+    /// The default model of this crate before 0.2 (when it was the `shoco`
+    /// crate on GitHub), which differs slightly from the C implementation's
+    /// model. Use it to read data compressed with that default.
     pub fn legacy_default() -> ShocoModel {
         ShocoModel {
             min_chr: 39,

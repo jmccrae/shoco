@@ -1,4 +1,4 @@
-use shoco::{compress, decompress, DecompressError, GenShocoModel, ShocoModel};
+use shoco_dyn::{compress, decompress, DecompressError, GenShocoModel, ShocoModel};
 
 /// Small deterministic pseudo-random generator, so failures are reproducible.
 struct Lcg(u64);
