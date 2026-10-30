@@ -14,3 +14,8 @@ ordermap = "*"
 # 
 # [profile.release]
 # debug = true
+
+[dev-dependencies]
+# Uses the same default model as the original C implementation; used to
+# check that compress produces identical output with the default model
+shoco_reference = { package = "shoco", version = "=0.1.0" }
