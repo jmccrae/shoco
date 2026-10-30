@@ -11,11 +11,11 @@ pub struct ShocoModel {
     pub max_successor_n : usize
 }
 
-impl ShocoModel {
+impl Default for ShocoModel {
     /// The default model of the original C implementation
     /// (`shoco_model.h` in <https://github.com/Ed-von-Schleck/shoco>), so
     /// that compressed data is compatible with it
-    pub fn default() -> ShocoModel {
+    fn default() -> ShocoModel {
         ShocoModel {
             min_chr: 39,
             max_chr: 122,
@@ -146,10 +146,12 @@ impl ShocoModel {
             packs : default_packs()
         }
     }
+}
 
-    /// The default model of versions of this crate before 0.2, which
-    /// differs slightly from the C implementation's model. Use it to read
-    /// data compressed with the earlier default.
+impl ShocoModel {
+    /// The default model of this crate before 0.2 (when it was the `shoco`
+    /// crate on GitHub), which differs slightly from the C implementation's
+    /// model. Use it to read data compressed with that default.
     pub fn legacy_default() -> ShocoModel {
         ShocoModel {
             min_chr: 39,

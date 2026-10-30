@@ -119,7 +119,7 @@ impl Encoding {
     }
 
     fn can_encode(&self, part : &[u8], successors : &OrderedDict<u8, Vec<u8>>, chrs_indices : &OrderedDict<u8, usize>) -> bool {
-        let lead_index = chrs_indices.get(&part[0]).map(|x| *x);
+        let lead_index = chrs_indices.get(&part[0]).copied();
         if let Some(lead_index) = lead_index {
             if lead_index > (1 << self.bits.header()) {
                 return false;
@@ -232,9 +232,7 @@ fn bigrams<'a>(sequence : &'a [u8]) -> BigramIterator<'a> {
 
 fn u32_line(items: &[u32]) ->  [u32; MAX_CONSECUTIVES] {
     let mut result = [0; 8];
-    for i in 0..items.len() {
-        result[i] = items[i];
-    }
+    result[..items.len()].copy_from_slice(items);
     result
 }
 
@@ -263,7 +261,7 @@ fn chunkinator(all_in : Box<dyn Iterator<Item=Vec<u8>>>, split : Split, strip : 
                 let iter = data.split(|c| *c == b'\n');
                 for chunk in iter {
                     let mut v = chunk.to_vec();
-                    if v.len() > 0 && v[v.len() - 1] == b'\r' {
+                    if !v.is_empty() && v[v.len() - 1] == b'\r' {
                         v.pop();
                     }
                     result.push(v);
@@ -290,7 +288,7 @@ fn chunkinator(all_in : Box<dyn Iterator<Item=Vec<u8>>>, split : Split, strip : 
             Strip::Punctuation => chunk.into_iter().skip_while(|c| PUNCTUATION.contains(c)).collect(),
             _ => chunk
         };
-        if chunk.len() > 0 {
+        if !chunk.is_empty() {
             result.push(chunk);
         }
     }
@@ -372,11 +370,14 @@ impl GenShocoModel {
     /// # Example
     ///
     /// ```
-    /// use shoco::{GenShocoModel, Split};
+    /// use shoco_dyn::{GenShocoModel, Split};
     /// let model = GenShocoModel::from_iter(Box::new(vec![b"Hello, world!".to_vec(), b"Goodbye, world!".to_vec()].into_iter()))
     ///    .split(Split::Whitespace)
     ///    .generate();
     ///    ```
+    // Not FromIterator: it takes a boxed iterator, and renaming it would
+    // break the API
+    #[allow(clippy::should_implement_trait)]
     pub fn from_iter(data : Box<dyn Iterator<Item=Vec<u8>>>) -> GenShocoModel {
         GenShocoModel {
             data,
@@ -399,7 +400,7 @@ impl GenShocoModel {
     /// # Example
     ///
     /// ```
-    /// use shoco::{GenShocoModel, Split};
+    /// use shoco_dyn::{GenShocoModel, Split};
     /// let model = GenShocoModel::from_files(vec!["training_data/dorian_gray.txt",
     ///              "training_data/metamorphosis.txt",
     ///              "training_data/pride_and_prejudice.txt"])
@@ -495,7 +496,7 @@ impl GenShocoModel {
                 for bg in bgs {
                     let (a, b) = bg;
                     first_char_counter.increment(a);
-                    let counter = bigram_counters.entry(a).or_insert_with(|| Counter::new());
+                    let counter = bigram_counters.entry(a).or_insert_with(Counter::new);
                     counter.increment(b);
                 }
             }
@@ -508,7 +509,7 @@ impl GenShocoModel {
                         map(|(c, _)| { 
                             c
                         }).collect::<Vec<u8>>();
-                    successor_list.extend(std::iter::repeat(b'\0').take((1 << self.max_successor_bits) - successor_list.len()));
+                    successor_list.extend(std::iter::repeat_n(b'\0', (1 << self.max_successor_bits) - successor_list.len()));
                     successors.insert(*char, successor_list);
                 }
             }
@@ -537,7 +538,7 @@ impl GenShocoModel {
                         map(|(c, _)| { 
                             c
                         }).collect::<Vec<u8>>();
-                    successor_list.extend(std::iter::repeat(b'\0').take((1 << self.max_successor_bits) - successor_list.len()));
+                    successor_list.extend(std::iter::repeat_n(b'\0', (1 << self.max_successor_bits) - successor_list.len()));
                     successors.insert(char, successor_list);
                 }
             }
@@ -563,7 +564,7 @@ impl GenShocoModel {
             }
             let s_indices = successor_list.iter().enumerate().map(|(i, s)| (*s, i)).collect::<OrderedDict<u8, usize>>();
             for (i, s) in successors.keys().enumerate() {
-                reversed[i] = s_indices.get(s).map(|x| *x);
+                reversed[i] = s_indices.get(s).copied();
             }
             successors_reversed.insert(*char, reversed);
         }
@@ -599,7 +600,7 @@ impl GenShocoModel {
             let max_encoding_len = best_encodings_raw.iter().map(|(_, encoding)| encoding.size).max().unwrap();
             let best_encodings = best_encodings_raw.iter().map(|(_, encoding)|  {
                 let mut e = encoding.bits.0.clone();
-                e.extend(std::iter::repeat(0).take(MAX_CONSECUTIVES - encoding.size));
+                e.extend(std::iter::repeat_n(0, MAX_CONSECUTIVES - encoding.size));
                 Encoding::new(e.as_slice())
             }).collect::<Vec<Encoding>>();
             (max_encoding_len, best_encodings)
@@ -622,7 +623,7 @@ impl GenShocoModel {
             }
         }).collect();
 
-        let chrs = successors.keys().map(|x| *x).collect();
+        let chrs = successors.keys().copied().collect();
 
         let model = ShocoModel {
             min_chr,
